@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../data/models/social_platform.dart';
 import '../../../viewmodels/composer_viewmodel.dart';
+import '../../../widgets/section_label.dart';
 
-/// Row of toggle chips that select which networks the post targets.
+/// "TARGET PLATFORMS" — pill toggles selecting which networks the post targets.
 class PlatformSelector extends ConsumerWidget {
   const PlatformSelector({super.key});
 
@@ -16,15 +17,14 @@ class PlatformSelector extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text('Publish to',
-            style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 8),
+        const SectionLabel('Target platforms'),
+        const SizedBox(height: 12),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 10,
+          runSpacing: 10,
           children: <Widget>[
             for (final SocialPlatform p in SocialPlatform.values)
-              _PlatformChip(
+              _PlatformPill(
                 platform: p,
                 selected: state.post.contentFor(p).enabled,
                 onTap: () => vm.togglePlatform(p),
@@ -36,8 +36,8 @@ class PlatformSelector extends ConsumerWidget {
   }
 }
 
-class _PlatformChip extends StatelessWidget {
-  const _PlatformChip({
+class _PlatformPill extends StatelessWidget {
+  const _PlatformPill({
     required this.platform,
     required this.selected,
     required this.onTap,
@@ -54,12 +54,12 @@ class _PlatformChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: selected
               ? platform.brandColor.withOpacity(0.12)
               : colors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: selected ? platform.brandColor : colors.outlineVariant,
             width: selected ? 1.5 : 1,
@@ -70,7 +70,7 @@ class _PlatformChip extends StatelessWidget {
           children: <Widget>[
             Icon(
               platform.icon,
-              size: 18,
+              size: 17,
               color: selected ? platform.brandColor : colors.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
@@ -81,12 +81,10 @@ class _PlatformChip extends StatelessWidget {
                 color: selected ? platform.brandColor : colors.onSurface,
               ),
             ),
-            const SizedBox(width: 6),
-            Icon(
-              selected ? Icons.check_circle : Icons.add_circle_outline,
-              size: 16,
-              color: selected ? platform.brandColor : colors.onSurfaceVariant,
-            ),
+            if (selected) ...<Widget>[
+              const SizedBox(width: 6),
+              Icon(Icons.check_circle, size: 15, color: platform.brandColor),
+            ],
           ],
         ),
       ),

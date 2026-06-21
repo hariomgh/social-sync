@@ -2,12 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/utils/validators.dart';
+import '../../data/models/insight.dart';
 import '../../data/models/media_attachment.dart';
 import '../../data/models/platform_content.dart';
 import '../../data/models/post.dart';
 import '../../data/models/publish_result.dart';
+import '../../data/models/schedule_mode.dart';
 import '../../data/models/social_account.dart';
 import '../../data/models/social_platform.dart';
+import '../../data/services/insights_engine.dart';
 import '../../data/services/publish_service.dart';
 import '../providers/app_providers.dart';
 
@@ -16,6 +19,8 @@ class ComposerState {
   const ComposerState({
     required this.post,
     this.previewPlatform = SocialPlatform.instagram,
+    this.scheduleMode = ScheduleMode.bestTime,
+    this.customScheduledAt,
     this.isPublishing = false,
     this.outcomes,
   });
@@ -24,6 +29,13 @@ class ComposerState {
 
   /// Which platform's mock is currently centered in the preview.
   final SocialPlatform previewPlatform;
+
+  /// Best-time vs custom scheduling.
+  final ScheduleMode scheduleMode;
+
+  /// The user's chosen time when [scheduleMode] is custom.
+  final DateTime? customScheduledAt;
+
   final bool isPublishing;
 
   /// Results of the most recent publish attempt, if any.
@@ -32,11 +44,17 @@ class ComposerState {
   Map<SocialPlatform, List<ValidationIssue>> get issues =>
       Validators.validate(post);
 
+  /// Live, rule-based recommendations for the current post.
+  List<Insight> get insights => InsightsEngine.analyze(post);
+
   bool get canPublish => Validators.canPublish(post) && !isPublishing;
 
   ComposerState copyWith({
     Post? post,
     SocialPlatform? previewPlatform,
+    ScheduleMode? scheduleMode,
+    DateTime? customScheduledAt,
+    bool clearCustomScheduledAt = false,
     bool? isPublishing,
     List<PublishOutcome>? outcomes,
     bool clearOutcomes = false,
@@ -44,6 +62,10 @@ class ComposerState {
     return ComposerState(
       post: post ?? this.post,
       previewPlatform: previewPlatform ?? this.previewPlatform,
+      scheduleMode: scheduleMode ?? this.scheduleMode,
+      customScheduledAt: clearCustomScheduledAt
+          ? null
+          : (customScheduledAt ?? this.customScheduledAt),
       isPublishing: isPublishing ?? this.isPublishing,
       outcomes: clearOutcomes ? null : (outcomes ?? this.outcomes),
     );
@@ -52,12 +74,19 @@ class ComposerState {
 
 /// ViewModel for the compose screen.
 ///
-/// Owns the working [Post] and every intent the UI can fire (edit text, toggle
-/// platforms, manage media, tailor per-platform copy, save, schedule, publish).
-/// Pure UI logic lives here; persistence and networking are delegated to the
-/// repositories/services resolved from [Ref].
+/// Owns the working [Post] and every intent the UI can fire: edit text, toggle
+/// platforms, manage media, tailor per-platform copy, choose scheduling, apply
+/// optimizations, save, schedule and publish.
 class ComposerViewModel extends Notifier<ComposerState> {
   static const Uuid _uuid = Uuid();
+
+  static const List<String> _recommendedHashtags = <String>[
+    '#marketing',
+    '#socialmedia',
+    '#contentcreator',
+    '#branding',
+    '#community',
+  ];
 
   @override
   ComposerState build() =>
@@ -73,9 +102,8 @@ class ComposerViewModel extends Notifier<ComposerState> {
 
   void appendToBaseText(String snippet) {
     final String current = _post.baseText;
-    final String joined = current.isEmpty
-        ? snippet
-        : '${current.trimRight()} $snippet';
+    final String joined =
+        current.isEmpty ? snippet : '${current.trimRight()} $snippet';
     updateBaseText(joined);
   }
 
@@ -139,6 +167,50 @@ class ComposerViewModel extends Notifier<ComposerState> {
     _setPost(_post.copyWith(media: next));
   }
 
+  // --- Scheduling ---------------------------------------------------------
+
+  void setScheduleMode(ScheduleMode mode) =>
+      state = state.copyWith(scheduleMode: mode);
+
+  void setCustomDateTime(DateTime at) => state = state.copyWith(
+        scheduleMode: ScheduleMode.custom,
+        customScheduledAt: at,
+      );
+
+  /// The concrete time a "schedule" action would use right now.
+  DateTime resolveScheduledAt() {
+    if (state.scheduleMode == ScheduleMode.custom &&
+        state.customScheduledAt != null) {
+      return state.customScheduledAt!;
+    }
+    return ref
+        .read(bestTimeServiceProvider)
+        .nextBestSlot(_post.selectedPlatforms);
+  }
+
+  // --- Optimizations ------------------------------------------------------
+
+  void applyOptimization(OptimizationAction action) {
+    switch (action) {
+      case OptimizationAction.switchToBestTime:
+        setScheduleMode(ScheduleMode.bestTime);
+      case OptimizationAction.trimForX:
+        final String text = _post.textFor(SocialPlatform.x);
+        final int max = SocialPlatform.x.maxCharacters;
+        if (text.length > max) {
+          final String trimmed =
+              '${text.substring(0, max - 1).trimRight()}…';
+          setCustomText(SocialPlatform.x, trimmed);
+        }
+      case OptimizationAction.addHashtags:
+        final String current = _post.baseText;
+        final Iterable<String> toAdd = _recommendedHashtags
+            .where((String t) => !current.toLowerCase().contains(t))
+            .take(3);
+        if (toAdd.isNotEmpty) appendToBaseText(toAdd.join(' '));
+    }
+  }
+
   // --- Load / reset -------------------------------------------------------
 
   void loadPost(Post post) =>
@@ -158,10 +230,13 @@ class ComposerViewModel extends Notifier<ComposerState> {
     return draft;
   }
 
-  Future<Post> schedule(DateTime at) async {
+  /// Schedules using the resolved time (best-time slot or the user's custom
+  /// date), and returns it.
+  Future<Post> schedule([DateTime? at]) async {
+    final DateTime when = at ?? resolveScheduledAt();
     final Post scheduled = _post.copyWith(
       status: PostStatus.scheduled,
-      scheduledAt: at,
+      scheduledAt: when,
       updatedAt: DateTime.now(),
     );
     await ref.read(postRepositoryProvider).save(scheduled);
@@ -184,8 +259,9 @@ class ComposerViewModel extends Notifier<ComposerState> {
       for (final SocialAccount a in accounts) a.platform: a,
     };
 
-    final List<PublishOutcome> outcomes =
-        await ref.read(publishServiceProvider).publish(_post, accounts: accountMap);
+    final List<PublishOutcome> outcomes = await ref
+        .read(publishServiceProvider)
+        .publish(_post, accounts: accountMap);
 
     final Post published = _post.copyWith(
       status: PublishService.statusFrom(outcomes),

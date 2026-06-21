@@ -6,6 +6,7 @@ import '../../../data/models/post.dart';
 import '../../providers/navigation_provider.dart';
 import '../../viewmodels/composer_viewmodel.dart';
 import '../../viewmodels/library_viewmodel.dart';
+import '../analytics/analytics_screen.dart';
 import 'widgets/post_tile.dart';
 
 /// Drafts, the scheduled queue and published history in one place.
@@ -30,6 +31,15 @@ class LibraryScreen extends ConsumerWidget {
             ],
           ),
           actions: <Widget>[
+            IconButton(
+              tooltip: 'Analytics',
+              icon: const Icon(Icons.insights_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AnalyticsScreen(),
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Refresh',
               icon: const Icon(Icons.refresh),

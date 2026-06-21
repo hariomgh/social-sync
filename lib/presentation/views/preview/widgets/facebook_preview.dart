@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/format.dart';
 import '../../../widgets/avatars.dart';
 import '../preview_data.dart';
 import 'preview_media.dart';
@@ -17,7 +18,7 @@ class FacebookPreview extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: colors.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
@@ -29,10 +30,9 @@ class FacebookPreview extends StatelessWidget {
             child: Row(
               children: <Widget>[
                 AuthorAvatar(
-                  name: data.authorName,
-                  imageUrl: data.avatarUrl,
-                  color: AppColors.facebook,
-                ),
+                    name: data.authorName,
+                    imageUrl: data.avatarUrl,
+                    color: AppColors.facebook),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -60,24 +60,21 @@ class FacebookPreview extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: PreviewText(
-                text: data.text,
-                accent: AppColors.facebook,
-                maxLines: 5,
-              ),
+                  text: data.text, accent: AppColors.facebook, maxLines: 5),
             ),
           if (data.hasMedia)
             PreviewMedia(paths: data.mediaPaths, aspectRatio: 1.91),
-          // Counts
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.thumb_up, size: 14, color: AppColors.facebook),
-                const SizedBox(width: 4),
-                Text('You and others',
+                const _ReactionCluster(),
+                const SizedBox(width: 6),
+                Text(compactCount(data.engagement.likes),
                     style: Theme.of(context).textTheme.bodySmall),
                 const Spacer(),
-                Text('Comments · Shares',
+                Text(
+                    '${compactCount(data.engagement.comments)} comments · ${compactCount(data.engagement.shares)} shares',
                     style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
@@ -98,6 +95,38 @@ class FacebookPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReactionCluster extends StatelessWidget {
+  const _ReactionCluster();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 18,
+      child: Stack(
+        children: <Widget>[
+          _dot(AppColors.facebook, Icons.thumb_up, 0),
+          _dot(AppColors.danger, Icons.favorite, 14),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot(Color color, IconData icon, double left) => Positioned(
+        left: left,
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 1.5),
+          ),
+          child: Icon(icon, size: 9, color: Colors.white),
+        ),
+      );
 }
 
 class _FbAction extends StatelessWidget {

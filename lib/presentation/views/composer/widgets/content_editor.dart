@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../data/models/social_platform.dart';
 import '../../../viewmodels/composer_viewmodel.dart';
+import 'hashtag_tools_sheet.dart';
 
-/// The shared content field — write once here and every platform inherits it
-/// unless individually overridden. Shows a count against the tightest selected
-/// platform limit so you know when copy will be cut somewhere.
+/// The shared "story" card — write once here and every platform inherits it
+/// unless individually overridden. Includes quick emoji / mention / hashtag
+/// actions, styled to match the design mockups.
 class ContentEditor extends ConsumerStatefulWidget {
   const ContentEditor({super.key});
 
@@ -16,6 +16,10 @@ class ContentEditor extends ConsumerStatefulWidget {
 
 class _ContentEditorState extends ConsumerState<ContentEditor> {
   late final TextEditingController _controller;
+
+  static const List<String> _emojis = <String>[
+    '😀', '🔥', '🚀', '✨', '💡', '🎉', '❤️', '👍', '📣', '🙌',
+  ];
 
   @override
   void initState() {
@@ -31,13 +35,16 @@ class _ContentEditorState extends ConsumerState<ContentEditor> {
     super.dispose();
   }
 
+  void _insert(String snippet) {
+    final String text = _controller.text;
+    ref.read(composerViewModelProvider.notifier).updateBaseText('$text$snippet');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ComposerViewModel vm =
-        ref.read(composerViewModelProvider.notifier);
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final ComposerViewModel vm = ref.read(composerViewModelProvider.notifier);
 
-    // Keep the field in sync when text changes externally (draft load, reset,
-    // hashtag insertion) without disturbing the cursor during normal typing.
     ref.listen<String>(
       composerViewModelProvider.select((ComposerState s) => s.post.baseText),
       (String? _, String next) {
@@ -50,53 +57,74 @@ class _ContentEditorState extends ConsumerState<ContentEditor> {
       },
     );
 
-    final ComposerState state = ref.watch(composerViewModelProvider);
-    final List<SocialPlatform> selected = state.post.selectedPlatforms;
-    final int length = _controller.text.characters.length;
-    final int? tightest = selected.isEmpty
-        ? null
-        : selected
-            .map((SocialPlatform p) => p.maxCharacters)
-            .reduce((int a, int b) => a < b ? a : b);
-    final bool over = tightest != null && length > tightest;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        TextField(
-          controller: _controller,
-          onChanged: vm.updateBaseText,
-          maxLines: 6,
-          minLines: 4,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            hintText: "What's on your mind? Write it once…",
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          TextField(
+            controller: _controller,
+            onChanged: vm.updateBaseText,
+            maxLines: 6,
+            minLines: 4,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: "What's the story today?",
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 8),
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: <Widget>[
-            Icon(Icons.text_fields,
-                size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text('$length characters',
-                style: Theme.of(context).textTheme.bodySmall),
-            const Spacer(),
-            if (tightest != null)
-              Text(
-                over
-                    ? 'Over $tightest (tightest limit)'
-                    : 'Fits all selected',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: over
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: over ? FontWeight.w600 : null,
+          Row(
+            children: <Widget>[
+              PopupMenuButton<String>(
+                tooltip: 'Emoji',
+                icon: Icon(Icons.emoji_emotions_outlined,
+                    color: colors.onSurfaceVariant, size: 22),
+                onSelected: _insert,
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    child: Wrap(
+                      spacing: 4,
+                      children: <Widget>[
+                        for (final String e in _emojis)
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _insert(e);
+                            },
+                            icon: Text(e, style: const TextStyle(fontSize: 20)),
+                          ),
+                      ],
                     ),
+                  ),
+                ],
               ),
-          ],
-        ),
-      ],
+              IconButton(
+                tooltip: 'Mention',
+                onPressed: () => _insert('@'),
+                icon: Icon(Icons.alternate_email,
+                    color: colors.onSurfaceVariant, size: 22),
+              ),
+              IconButton(
+                tooltip: 'Hashtags',
+                onPressed: () => showHashtagTools(context),
+                icon: Icon(Icons.tag,
+                    color: colors.onSurfaceVariant, size: 22),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

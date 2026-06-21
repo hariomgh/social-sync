@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/repositories/account_repository.dart';
 import '../../data/repositories/post_repository.dart';
+import '../../data/services/analytics_service.dart';
+import '../../data/services/best_time_service.dart';
+import '../../data/services/engagement_projector.dart';
 import '../../data/services/local_store.dart';
 import '../../data/services/media_service.dart';
 import '../../data/services/oauth_service.dart';
@@ -55,3 +58,12 @@ final Provider<AccountRepository> accountRepositoryProvider =
     tokenStore: ref.watch(tokenStoreProvider),
   ),
 );
+
+final Provider<BestTimeService> bestTimeServiceProvider =
+    Provider<BestTimeService>((Ref ref) => const BestTimeService());
+
+final Provider<EngagementProjector> engagementProjectorProvider =
+    Provider<EngagementProjector>((Ref ref) => const EngagementProjector());
+
+final Provider<AnalyticsService> analyticsServiceProvider =
+    Provider<AnalyticsService>((Ref ref) => const AnalyticsService());

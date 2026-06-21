@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../data/models/engagement_stats.dart';
+
 /// Immutable bundle of everything a preview card needs to render. Keeping the
 /// preview widgets "dumb" (data in, UI out) makes them trivial to snapshot-test
 /// and reuse.
@@ -13,6 +15,7 @@ class PreviewData {
     this.avatarUrl,
     this.timeLabel = 'Just now',
     this.isConnected = false,
+    this.engagement = EngagementStats.zero,
   });
 
   final String authorName;
@@ -24,6 +27,9 @@ class PreviewData {
 
   /// Whether a real account is connected (affects the avatar/name shown).
   final bool isConnected;
+
+  /// Projected engagement shown on the preview card.
+  final EngagementStats engagement;
 
   bool get hasMedia => mediaPaths.isNotEmpty;
 }

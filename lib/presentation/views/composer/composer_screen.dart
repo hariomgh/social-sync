@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/extensions.dart';
 import '../../viewmodels/composer_viewmodel.dart';
 import '../preview/preview_panel.dart';
 import 'widgets/content_editor.dart';
-import 'widgets/hashtag_tools_sheet.dart';
+import 'widgets/insights_section.dart';
 import 'widgets/media_picker_bar.dart';
 import 'widgets/per_platform_customizer.dart';
 import 'widgets/platform_selector.dart';
 import 'widgets/publish_actions.dart';
+import 'widgets/scheduling_section.dart';
 
-/// The compose screen: write once (Edit tab), then see it everywhere (Preview
-/// tab). The publish bar is always visible so the primary action is one tap away.
+/// Create screen: a single compose form (mockup-styled) plus a live Preview tab.
 class ComposerScreen extends ConsumerWidget {
   const ComposerScreen({super.key});
 
@@ -23,31 +22,28 @@ class ComposerScreen extends ConsumerWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(AppConstants.appName),
-          bottom: const TabBar(
-            tabs: <Widget>[
-              Tab(text: 'Edit', icon: Icon(Icons.edit_outlined)),
-              Tab(text: 'Preview', icon: Icon(Icons.visibility_outlined)),
-            ],
-          ),
+          title: const Text('Create'),
           actions: <Widget>[
             IconButton(
               tooltip: 'New post',
               icon: const Icon(Icons.add_circle_outline),
               onPressed: () => _confirmReset(context, ref),
             ),
+            const SizedBox(width: 4),
           ],
+          bottom: const TabBar(
+            tabs: <Widget>[
+              Tab(text: 'Compose', icon: Icon(Icons.edit_outlined)),
+              Tab(text: 'Preview', icon: Icon(Icons.visibility_outlined)),
+            ],
+          ),
         ),
         body: const TabBarView(
           children: <Widget>[
-            _EditTab(),
-            SingleChildScrollView(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: PreviewPanel(),
-            ),
+            _CreateTab(),
+            PreviewPanel(),
           ],
         ),
-        bottomNavigationBar: const PublishActions(),
       ),
     );
   }
@@ -61,6 +57,7 @@ class ComposerScreen extends ConsumerWidget {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Start a new post?'),
         content: const Text('Unsaved changes will be cleared.'),
         actions: <Widget>[
@@ -73,43 +70,59 @@ class ComposerScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (ok ?? false) {
-      ref.read(composerViewModelProvider.notifier).reset();
-    }
+    if (ok ?? false) ref.read(composerViewModelProvider.notifier).reset();
   }
 }
 
-class _EditTab extends StatelessWidget {
-  const _EditTab();
+class _CreateTab extends StatelessWidget {
+  const _CreateTab();
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
       children: <Widget>[
-        const PlatformSelector(),
-        const SizedBox(height: 20),
-        Text('Content', style: context.textTheme.labelLarge),
-        const SizedBox(height: 8),
-        const ContentEditor(),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => showHashtagTools(context),
-          icon: const Icon(Icons.tag, size: 18),
-          label: const Text('Add hashtags & mentions'),
-        ),
-        const SizedBox(height: 20),
         const MediaPickerBar(),
-        const SizedBox(height: 24),
-        Text('Per-platform', style: context.textTheme.titleMedium),
-        const SizedBox(height: 4),
-        Text(
-          'Fine-tune copy and crops for each network.',
-          style: context.textTheme.bodySmall,
-        ),
-        const SizedBox(height: 12),
-        const PerPlatformCustomizer(),
+        const SizedBox(height: 22),
+        const ContentEditor(),
+        const SizedBox(height: 22),
+        const PlatformSelector(),
+        const SizedBox(height: 16),
+        _PerPlatformExpander(),
+        const SizedBox(height: 22),
+        const InsightsSection(),
+        const SizedBox(height: 22),
+        const SchedulingSection(),
+        const SizedBox(height: 28),
+        const PublishActions(),
       ],
+    );
+  }
+}
+
+class _PerPlatformExpander extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.colors.outlineVariant),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          shape: const Border(),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: Icon(Icons.tune, color: context.colors.primary),
+          title: const Text('Customize per platform',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('Tailor copy & crops for each network',
+              style: context.textTheme.bodySmall),
+          children: const <Widget>[PerPlatformCustomizer()],
+        ),
+      ),
     );
   }
 }

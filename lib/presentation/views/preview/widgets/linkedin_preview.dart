@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/format.dart';
 import '../../../widgets/avatars.dart';
 import '../preview_data.dart';
 import 'preview_media.dart';
@@ -18,7 +19,7 @@ class LinkedInPreview extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: colors.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
@@ -30,11 +31,10 @@ class LinkedInPreview extends StatelessWidget {
             child: Row(
               children: <Widget>[
                 AuthorAvatar(
-                  name: data.authorName,
-                  imageUrl: data.avatarUrl,
-                  size: 44,
-                  color: AppColors.linkedin,
-                ),
+                    name: data.authorName,
+                    imageUrl: data.avatarUrl,
+                    size: 44,
+                    color: AppColors.linkedin),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -42,7 +42,7 @@ class LinkedInPreview extends StatelessWidget {
                     children: <Widget>[
                       Text(data.authorName,
                           style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('Brand · You',
+                      Text('Creative Director • 2nd',
                           style: Theme.of(context).textTheme.bodySmall),
                       Row(
                         children: <Widget>[
@@ -67,10 +67,9 @@ class LinkedInPreview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   PreviewText(
-                    text: data.text,
-                    accent: AppColors.linkedin,
-                    maxLines: isLong ? 3 : null,
-                  ),
+                      text: data.text,
+                      accent: AppColors.linkedin,
+                      maxLines: isLong ? 3 : null),
                   if (isLong)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
@@ -81,17 +80,21 @@ class LinkedInPreview extends StatelessWidget {
               ),
             ),
           if (data.hasMedia)
-            PreviewMedia(paths: data.mediaPaths, aspectRatio: 1.91),
+            PreviewMediaGrid(
+                paths: data.mediaPaths,
+                aspectRatio: 1.5,
+                borderRadius: BorderRadius.zero),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.thumb_up, size: 14, color: AppColors.linkedin),
-                const SizedBox(width: 4),
-                Text('Reactions',
+                const _LiReactions(),
+                const SizedBox(width: 6),
+                Text(compactCount(data.engagement.likes),
                     style: Theme.of(context).textTheme.bodySmall),
                 const Spacer(),
-                Text('Comments · Reposts',
+                Text(
+                    '${compactCount(data.engagement.comments)} comments · ${compactCount(data.engagement.shares)} reposts',
                     style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
@@ -113,6 +116,39 @@ class LinkedInPreview extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LiReactions extends StatelessWidget {
+  const _LiReactions();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 50,
+      height: 18,
+      child: Stack(
+        children: <Widget>[
+          _dot(AppColors.linkedin, Icons.thumb_up, 0),
+          _dot(AppColors.success, Icons.volunteer_activism, 14),
+          _dot(AppColors.danger, Icons.favorite, 28),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot(Color color, IconData icon, double left) => Positioned(
+        left: left,
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 1.5),
+          ),
+          child: Icon(icon, size: 9, color: Colors.white),
+        ),
+      );
 }
 
 class _LiAction extends StatelessWidget {
